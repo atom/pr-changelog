@@ -1,0 +1,37 @@
+{
+  "name": "atom-changelog",
+  "version": "0.0.0",
+  "description": "Atom changelog generator",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "babel src --out-dir lib && node ./lib/index.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/benogle/atom-changelog.git"
+  },
+  "keywords": [
+    "atom",
+    "github",
+    "changelog"
+  ],
+  "author": "benogle",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/benogle/atom-changelog/issues"
+  },
+  "homepage": "https://github.com/benogle/atom-changelog#readme",
+  "dependencies": {
+    "bluebird": "^3.0.6",
+    "github": "^0.1.16",
+    "moment": "^2.10.6",
+    "yargs": "^3.31.0"
+  },
+  "devDependencies": {
+    "babel-plugin-syntax-async-functions": "^6.1.4",
+    "babel-plugin-transform-regenerator": "^6.1.4",
+    "babel-polyfill": "^6.1.4",
+    "babel-preset-es2015": "^6.1.4"
+  }
+}
