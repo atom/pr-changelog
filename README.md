@@ -18,6 +18,8 @@ v1.2.4...v1.3.0
 
 `npm install -g pr-changelog`
 
+This relies on the GitHub API; you should [create an API token](https://help.github.com/articles/creating-an-access-token-for-command-line-use/), and place it in the `GITHUB_ACCESS_TOKEN` environment variable. It needs `public_repo` access if your repo is public, and `repo` access if your repo is private.
+
 This was written for [Atom](http://atom.io), and as such there are a couple atomisms baked in. e.g. By default it will generate an Atom changelog.
 
 Generate an Atom changelog, including package changelogs:
