@@ -1,6 +1,7 @@
 require("babel-polyfill")
-var linkParser = require('parse-link-header')
-var {clone} = require('./utils')
+let linkParser = require('parse-link-header')
+let {clone} = require('./utils')
+let Logger = require('./logger')
 
 module.exports = async function(originalOptions, func, filterFunc) {
   function getOptions(page) {
@@ -33,7 +34,7 @@ module.exports = async function(originalOptions, func, filterFunc) {
 
   try {
     for (let page = 2; page <= totalPages; page++) {
-      console.log('Fetching page', page);
+      Logger.log('Fetching page', page);
 
       results = await func(getOptions(page))
       if (shouldUpdateTotalPagesOnNextPage && results.length)
@@ -48,7 +49,7 @@ module.exports = async function(originalOptions, func, filterFunc) {
     }
   }
   catch (e) {
-    console.log(e.message || e);
+    Logger.warn(e.message || e);
   }
 
   return allResults

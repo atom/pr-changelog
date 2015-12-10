@@ -1,13 +1,14 @@
 require("babel-polyfill")
 
-var Promise = require("bluebird")
-var GithubApi = require('github')
-var moment = require('moment')
-var paginator = require('./paginator')
-var spawnSync = require('child_process').spawnSync;
-var {filter} = require('./utils')
+let Promise = require("bluebird")
+let GithubApi = require('github')
+let moment = require('moment')
+let paginator = require('./paginator')
+let spawnSync = require('child_process').spawnSync;
+let {filter} = require('./utils')
+let Logger = require('./logger')
 
-var github = new GithubApi({
+let github = new GithubApi({
   version: '3.0.0',
   timeout: 10000,
   protocol: 'https'
@@ -53,11 +54,11 @@ async function getCommitDiff({owner, repo, base, head, localClone}) {
   if (localClone) {
     commits = getCommitDiffLocal({owner, repo, base, head, localClone})
     if (commits) {
-      console.log('Found', commits.length, 'local commits');
+      Logger.log('Found', commits.length, 'local commits');
       return commits
     }
     else
-      console.log(`Cannot fetch local commit diff, cannot find local copy of ${owner}/${repo}`);
+      Logger.warn(`Cannot fetch local commit diff, cannot find local copy of ${owner}/${repo}`);
   }
 
   authenticate()
@@ -69,6 +70,7 @@ async function getCommitDiff({owner, repo, base, head, localClone}) {
   }
 
   let compareView = await github.repos.compareCommitsAsync(options)
+  Logger.log('Found', compareView.commits.length, 'commits from the GitHub API');
   return formatCommits(compareView.commits)
 }
 
@@ -163,7 +165,7 @@ function filterPullRequestsByCommits(pullRequests, commits) {
     if (pullRequestsByNumber[prNumber])
       filteredPullRequests.push(pullRequestsByNumber[prNumber])
     else
-      console.log('no PR for', prNumber, commit.summary);
+      Logger.log('No PR found for', prNumber, '; Commit text:', commit.summary);
   }
 
   return formatPullRequests(filteredPullRequests)
@@ -203,6 +205,9 @@ function pullRequestsToString(pullRequests) {
 }
 
 async function getFormattedPullRequestsBetweenTags({owner, repo, fromTag, toTag, localClone}) {
+  Logger.log('Comparing refs', fromTag, toTag, 'on repo', `${owner}/${repo}`);
+  if (localClone) Logger.log('Local clone of repo', localClone);
+
   let commits = await getCommitDiff({
     owner: owner,
     repo: repo,
@@ -215,14 +220,14 @@ async function getFormattedPullRequestsBetweenTags({owner, repo, fromTag, toTag,
   let fromDate = firstCommit.date
   let toDate = lastCommit.date
 
-  console.log("Fetching PRs between dates", fromDate.toISOString(), toDate.toISOString());
+  Logger.log("Fetching PRs between dates", fromDate.toISOString(), toDate.toISOString());
   let pullRequests = await getPullRequestsBetweenDates({
     owner: owner,
     repo: repo,
     fromDate: fromDate,
     toDate: toDate
   })
-  console.log("Found", pullRequests.length, "merged PRs");
+  Logger.log("Found", pullRequests.length, "merged PRs");
 
   pullRequests = filterPullRequestsByCommits(pullRequests, commits)
   return pullRequestsToString(pullRequests)

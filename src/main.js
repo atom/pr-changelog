@@ -2,6 +2,7 @@
 
 let expandHomeDir = require('expand-home-dir')
 let getFormattedPullRequestsBetweenTags = require('./changelog')
+let Logger = require('./logger')
 let argv = require('yargs')
   .usage('Usage: $0 [options] <baseTag>...<headTag>')
   .alias('r', 'repo')
@@ -18,6 +19,7 @@ let argv = require('yargs')
   .demand(1)
   .argv
 
+Logger.setVerbose(argv.verbose)
 
 let spanRegex = /(.+)(?:[\.]{3})(.+)/
 let repoRegex = /([^\/]+)\/([^\/]+)/
@@ -25,10 +27,6 @@ let repoRegex = /([^\/]+)\/([^\/]+)/
 let [__, fromTag, toTag] = spanRegex.exec(argv._[0])
 let [___, owner, repo] = repoRegex.exec(argv.repo)
 let localClone = expandHomeDir(argv.localClone)
-
-console.log(fromTag, toTag);
-console.log(owner, repo);
-console.log(localClone);
 
 getFormattedPullRequestsBetweenTags({
   owner: owner,
