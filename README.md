@@ -43,3 +43,5 @@ pr-changelog -v -r omgme/myrepo -l ~/path/to/myrepo v0.9.0...v1.0.0 > changelog.
 There are a number of changelog generators out there. The downside of most approaches is that they use dates to bucket the commits or PRs into a tag or ref. Atom uses a [release system](http://blog.atom.io/2015/10/21/introducing-the-atom-beta-channel.html) similar to Chrome with stable, beta, and a development channels, so date bucketing does not work.
 
 This project diffs the commits between the specified refs, looks for merge commits, and finds the PRs associated with those merge commits.
+
+Additionally, with the `-P` flag, it fetches the package.json from each ref, compares the `packageDependencies` key, and runs the changelog generation on all the changed packages.
