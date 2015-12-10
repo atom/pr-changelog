@@ -1,15 +1,19 @@
 {
-  "name": "atom-changelog",
+  "name": "changelog",
   "version": "0.0.0",
-  "description": "Atom changelog generator",
-  "main": "index.js",
+  "description": "Changelog generator",
+  "main": "./lib/main.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "babel src --out-dir lib && node ./lib/index.js"
+    "build": "babel src --out-dir lib",
+    "start": "npm run build && node ./lib/index.js"
+  },
+  "bin": {
+    "changelog": "./lib/main.js"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/benogle/atom-changelog.git"
+    "url": "git+https://github.com/benogle/changelog.git"
   },
   "keywords": [
     "atom",
@@ -19,11 +23,12 @@
   "author": "benogle",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/benogle/atom-changelog/issues"
+    "url": "https://github.com/benogle/changelog/issues"
   },
-  "homepage": "https://github.com/benogle/atom-changelog#readme",
+  "homepage": "https://github.com/benogle/changelog#readme",
   "dependencies": {
     "bluebird": "^3.0.6",
+    "expand-home-dir": "0.0.2",
     "github": "^0.1.16",
     "moment": "^2.10.6",
     "parse-link-header": "^0.4.1",

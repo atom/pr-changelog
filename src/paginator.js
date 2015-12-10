@@ -33,7 +33,7 @@ module.exports = async function(originalOptions, func, filterFunc) {
 
   try {
     for (let page = 2; page <= totalPages; page++) {
-      console.log('fetching page', page);
+      console.log('Fetching page', page);
 
       results = await func(getOptions(page))
       if (shouldUpdateTotalPagesOnNextPage && results.length)
