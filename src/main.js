@@ -11,6 +11,9 @@ let argv = require('yargs')
   .alias('l', 'local-clone')
   .describe('l', 'Path to local clone of repository')
   .default('l', '~/github/atom')
+  .boolean('P')
+  .alias('P', 'packages')
+  .describe('P', 'Generate changelog for the changed packages. Uses `packageDependencies` package.json key')
   .boolean('v')
   .alias('v', 'verbose')
   .describe('v', 'Verbose')
@@ -27,6 +30,7 @@ let repoRegex = /([^\/]+)\/([^\/]+)/
 let [__, fromTag, toTag] = spanRegex.exec(argv._[0])
 let [___, owner, repo] = repoRegex.exec(argv.repo)
 let localClone = expandHomeDir(argv.localClone)
+let dependencyKey = argv.packages ? 'packageDependencies' : null
 
 getChangelog({
   owner: owner,
@@ -34,7 +38,7 @@ getChangelog({
   fromTag: fromTag,
   toTag: toTag,
   localClone: localClone,
-  dependencyKey: 'packageDependencies'
+  dependencyKey: dependencyKey
 }).then(function(output) {
   console.log(output);
 }).catch(function(err) {

@@ -252,7 +252,7 @@ async function getFormattedPullRequestsForDependencies({owner, repo, fromTag, to
     path: 'package.json'
   }
 
-  Logger.log(`Generating dependency changelog for '${dependencyKey}' on ${owner}/${repo}`)
+  Logger.log(`\nGenerating dependency changelog for '${dependencyKey}' on ${owner}/${repo}`)
 
   function getContent(results) {
     return new Buffer(results.content, results.encoding).toString('utf-8')
