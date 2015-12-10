@@ -1,6 +1,6 @@
 # pr-changelog
 
-A command line utility to denerate PR changelog between two refs. The changelog looks like:
+A command line utility to generate a PR changelog between two refs. The resulting changelog looks like:
 
 ```md
 ## atom/atom
