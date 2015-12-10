@@ -2,11 +2,11 @@
   "name": "pr-changelog",
   "version": "0.1.0",
   "description": "Changelog generator",
-  "main": "./lib/main.js",
+  "main": "./lib/changelog.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "build": "babel src --out-dir lib",
-    "start": "npm run build && node ./lib/index.js"
+    "link": "npm run build && npm link"
   },
   "bin": {
     "pr-changelog": "./lib/main.js"
