@@ -5,7 +5,7 @@ let GithubApi = require('github')
 let moment = require('moment')
 let paginator = require('./paginator')
 let spawnSync = require('child_process').spawnSync;
-let {filter} = require('./utils')
+let {filter, clone} = require('./utils')
 let Logger = require('./logger')
 
 let github = new GithubApi({
@@ -204,8 +204,8 @@ function pullRequestsToString(pullRequests) {
   return pullRequestStrings.join('\n')
 }
 
-async function getFormattedPullRequestsBetweenTags({owner, repo, fromTag, toTag, localClone}) {
-  Logger.log('Comparing refs', fromTag, toTag, 'on repo', `${owner}/${repo}`);
+async function getFormattedPullRequests({owner, repo, fromTag, toTag, localClone}) {
+  Logger.log('\nComparing', `${owner}/${repo}`, `${fromTag}...${toTag}`);
   if (localClone) Logger.log('Local clone of repo', localClone);
 
   let commits = await getCommitDiff({
@@ -230,7 +230,99 @@ async function getFormattedPullRequestsBetweenTags({owner, repo, fromTag, toTag,
   Logger.log("Found", pullRequests.length, "merged PRs");
 
   pullRequests = filterPullRequestsByCommits(pullRequests, commits)
-  return pullRequestsToString(pullRequests)
+
+  if (pullRequests.length) {
+    let changelog = pullRequestsToString(pullRequests)
+    return `## ${owner}/${repo}\n\n${fromTag}...${toTag}\n\n${changelog}`
+  }
+  else
+    return ''
 }
 
-module.exports = getFormattedPullRequestsBetweenTags
+/*
+  Generating changelog from child packages
+*/
+
+async function getFormattedPullRequestsForDependencies({owner, repo, fromTag, toTag, dependencyKey}) {
+  let options, fromRefContent, toRefContent, changedDependencies
+  let resultList = []
+  let contentOptions = {
+    user: owner,
+    repo: repo,
+    path: 'package.json'
+  }
+
+  Logger.log(`Generating dependency changelog for '${dependencyKey}' on ${owner}/${repo}`)
+
+  function getContent(results) {
+    return new Buffer(results.content, results.encoding).toString('utf-8')
+  }
+
+  function getDependencies(packageJSON) {
+    let json = JSON.parse(packageJSON)
+    return json[dependencyKey]
+  }
+
+  function getChangedDependencies(fromPackageJSONStr, toPackageJSONStr) {
+    let changedDependencies = {}
+    let fromDeps = getDependencies(fromPackageJSONStr)
+    let toDeps = getDependencies(toPackageJSONStr)
+
+    for (let packageName in fromDeps) {
+      if (fromDeps[packageName] != toDeps[packageName]) {
+        changedDependencies[packageName] = {
+          // Tags are prefixed with the `v`, not an ideal solution
+          fromRef: `v${fromDeps[packageName]}`,
+          toRef: `v${toDeps[packageName]}`
+        }
+      }
+    }
+
+    return changedDependencies
+  }
+
+  authenticate()
+  options = clone(contentOptions)
+  options.ref = fromTag
+  fromRefContent = github.repos.getContentAsync(options)
+
+  authenticate()
+  options = clone(contentOptions)
+  options.ref = toTag
+  toRefContent = github.repos.getContentAsync(options)
+
+  try {
+    fromRefContent = getContent(await fromRefContent)
+    toRefContent = getContent(await toRefContent)
+  }
+  catch (e) {
+    Logger.log("Cannot get package.json content:", e.message || e)
+    return ''
+  }
+
+  changedDependencies = getChangedDependencies(fromRefContent, toRefContent)
+  for (let packageName in changedDependencies) {
+    let {fromRef, toRef} = changedDependencies[packageName]
+    let formattedPR = await getFormattedPullRequests({owner: owner, repo: packageName, fromTag: fromRef, toTag: toRef})
+    if (formattedPR)
+      resultList.push(formattedPR)
+  }
+
+  return resultList.join('\n\n')
+}
+
+async function getChangelog(options) {
+  let mainPackageChangelog, childrenChangelog, results
+
+  // These could be done in parallel, but serially threads the log messages nicely
+  mainPackageChangelog = await getFormattedPullRequests(options)
+  if (options.dependencyKey)
+    childrenChangelog = await getFormattedPullRequestsForDependencies(options)
+
+  results = [mainPackageChangelog]
+  if (childrenChangelog) results.push(childrenChangelog)
+
+  return results.join('\n\n')
+}
+
+module.exports = getChangelog

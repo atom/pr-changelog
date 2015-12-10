@@ -1,7 +1,7 @@
 #! /usr/bin/env node
 
 let expandHomeDir = require('expand-home-dir')
-let getFormattedPullRequestsBetweenTags = require('./changelog')
+let getChangelog = require('./changelog')
 let Logger = require('./logger')
 let argv = require('yargs')
   .usage('Usage: $0 [options] <baseTag>...<headTag>')
@@ -28,12 +28,13 @@ let [__, fromTag, toTag] = spanRegex.exec(argv._[0])
 let [___, owner, repo] = repoRegex.exec(argv.repo)
 let localClone = expandHomeDir(argv.localClone)
 
-getFormattedPullRequestsBetweenTags({
+getChangelog({
   owner: owner,
   repo: repo,
   fromTag: fromTag,
   toTag: toTag,
-  localClone: localClone
+  localClone: localClone,
+  dependencyKey: 'packageDependencies'
 }).then(function(output) {
   console.log(output);
 }).catch(function(err) {
