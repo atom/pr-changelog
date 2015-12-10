@@ -4,6 +4,8 @@ var Promise = require("bluebird")
 var GithubApi = require('github')
 var moment = require('moment')
 var paginator = require('./paginator')
+var spawnSync = require('child_process').spawnSync;
+var {filter} = require('./utils')
 
 var argv = require('yargs').argv;
 
@@ -29,85 +31,7 @@ var toTag = 'v1.3.0-beta7'
 var owner = 'atom'
 var repo = 'atom'
 
-// * `tagNames` - ['v1.1.0', 'v1.2.0']
-async function getTags(tagNames) {
-  authenticate()
-  let tags = await github.repos.getTagsAsync({
-    user: owner,
-    repo: repo
-  })
-
-  let tagsToFetch = []
-  for (let tagName of tagNames) {
-    for (let tag of tags) {
-      if (tagName == tag.name)
-        tagsToFetch.push(tag)
-    }
-  }
-
-  let promises = tagsToFetch.map((tag) => {
-    return github.repos.getCommitAsync({
-      user: owner,
-      repo: repo,
-      sha: tag.commit.sha
-    })
-  })
-
-  let tagsToReturn = []
-  for (let i = 0; i < promises.length; i++) {
-    let promise = promises[i]
-    let commit = await promise
-    tagsToReturn.push({
-      name: tagNames[i],
-      sha: commit.sha,
-      date: moment(commit.commit.committer.date)
-    })
-  }
-
-  return tagsToReturn
-}
-
-async function getIssuesAndPullRequestsBetweenDates(fromDate, toDate) {
-  authenticate()
-  let options = {
-    user: owner,
-    repo: repo,
-    state: 'closed',
-    sort: 'updated',
-    direction: 'desc',
-    since: fromDate.toISOString()
-  }
-  let rawIssues = await paginator(options, (options) => { return github.issues.repoIssuesAsync(options) })
-
-  let issues = []
-  let pullRequests = []
-
-  for (let issue of rawIssues) {
-    let closedDate = moment(issue.closed_at)
-    if (closedDate.isBefore(toDate)) {
-      if (issue.pull_request.url)
-        pullRequests.push(issue)
-      else
-        issues.push(issue)
-    }
-  }
-
-  console.log(pullRequests.length, issues.length);
-
-  authenticate()
-  options = {
-    user: owner,
-    repo: repo,
-    number: pullRequests[0].number
-  }
-  let pr = await github.pullRequests.get(options)
-  console.log('ISSUE', pullRequests[0]);
-  console.log('PR', pr);
-
-  return {issues: issues, pullRequests: pullRequests}
-}
-
-async function getPullRequestsBetweenDates(fromDate, toDate) {
+async function getPullRequestsBetweenDates({owner, repo, fromDate, toDate}) {
   authenticate()
   let options = {
     user: owner,
@@ -142,9 +66,38 @@ async function getPullRequestsBetweenDates(fromDate, toDate) {
   return formatPullRequests(mergedPRs)
 }
 
-// This will only return 250 commits
-// git log --pretty=oneline v1.2.0-beta3...v1.3.0-beta7
-async function compareCommits({base, head}) {
+// Get the tag diff locally
+function compareCommitsLocal({owner, repo, base, head}) {
+  let gitDirParams = ['--git-dir', '/Users/ben/github/atom/.git', '--work-tree', '/Users/ben/github/atom']
+
+  let remote = spawnSync('git', gitDirParams.concat(['config', '--get', 'remote.origin.url'])).stdout.toString()
+  if (remote.indexOf(`:${owner}/${repo}.git`) < 0)
+    return null
+
+  let commitRegex = /([\da-f]+) ([\d]+) (.+)/
+  let commitStrings = spawnSync('git', gitDirParams.concat(['log', '--format="%H %ct %s"', `${base}...${head}`])).stdout.toString().trim().split('\n')
+  let commits = commitStrings.map((commitString) => {
+    let match = commitString.match(commitRegex)
+    let [__, sha, timestamp, summary] = match
+    return {sha: sha, summary: summary, date: moment.unix(timestamp)}
+  })
+
+  return formatCommits(commits)
+}
+
+// This will only return 250 commits when using the API
+async function compareCommits({owner, repo, base, head, checkLocal}) {
+  let commits
+  if (checkLocal) {
+    commits = compareCommitsLocal({owner, repo, base, head})
+    if (commits) {
+      console.log('Found', commits.length, 'local commits');
+      return commits
+    }
+    else
+      console.log(`Cannot fetch local commit diff, cannot find local copy of ${owner}/${repo}`);
+  }
+
   authenticate()
   let options = {
     user: owner,
@@ -154,9 +107,7 @@ async function compareCommits({base, head}) {
   }
 
   let compareView = await github.repos.compareCommitsAsync(options)
-  console.log(compareView.total_commits);
-  let commits = compareView.commits
-  return formatCommits(commits)
+  return formatCommits(compareView.commits)
 }
 
 function filterPullRequestsByCommits(pullRequests, commits) {
@@ -182,39 +133,47 @@ function filterPullRequestsByCommits(pullRequests, commits) {
   return filteredPullRequests
 }
 
-async function run() {
-  let tags = await getTags([fromTag, toTag])
-
-  let commits = await compareCommits({base: tags[0].sha, head: tags[1].sha})
+async function getFormattedPullRequestsBetweenTags({owner, repo, fromTag, toTag, checkLocal}) {
+  let commits = await compareCommits({
+    owner: owner,
+    repo: repo,
+    base: fromTag,
+    head: toTag,
+    checkLocal: checkLocal
+  })
   let firstCommit = commits[0]
   let lastCommit = commits[commits.length - 1]
-
   let fromDate = firstCommit.date
   let toDate = lastCommit.date
-  let pullRequests = await getPullRequestsBetweenDates(fromDate, toDate)
+
+  console.log("Fetching PRs between dates", fromDate.toISOString(), toDate.toISOString());
+  let pullRequests = await getPullRequestsBetweenDates({
+    owner: owner,
+    repo: repo,
+    fromDate: fromDate,
+    toDate: toDate
+  })
+  console.log("Found", pullRequests.length, "merged PRs");
 
   pullRequests = filterPullRequestsByCommits(pullRequests, commits)
-  console.log(pullRequestsToString(pullRequests));
+  return pullRequestsToString(pullRequests)
 }
 
-run().then(() => {
-  console.log('DONE');
+getFormattedPullRequestsBetweenTags({
+  owner: owner,
+  repo: repo,
+  fromTag: fromTag,
+  toTag: toTag,
+  checkLocal: true
+}).then((output) => {
+  console.log(output);
 }).catch((err) => {
-  console.log('!!', err.stack || err);
+  console.log('error', err.stack || err);
 })
 
 
 
 
-
-
-function filter(arr, func) {
-  let newArr = []
-  for (let obj of arr)
-    if (func(obj))
-      newArr.push(obj)
-  return newArr
-}
 
 function formatCommits(commits) {
   let commitsResult = []
@@ -222,13 +181,16 @@ function formatCommits(commits) {
   for (let commit of commits) {
     if (shas[commit.sha]) continue;
     shas[commit.sha] = true
-    commitsResult.push({
-      sha: commit.sha,
-      summary: commit.commit.message.split('\n')[0],
-      message: commit.commit.message,
-      date: moment(commit.commit.committer.date),
-      author: commit.commit.author.name
-    })
+    if (commit.summary)
+      commitsResult.push(commit)
+    else
+      commitsResult.push({
+        sha: commit.sha,
+        summary: commit.commit.message.split('\n')[0],
+        message: commit.commit.message,
+        date: moment(commit.commit.committer.date),
+        author: commit.commit.author.name
+      })
   }
   commitsResult.sort((a, b) => {
     if (a.date.isBefore(b.date))

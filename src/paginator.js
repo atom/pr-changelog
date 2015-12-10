@@ -1,5 +1,6 @@
 require("babel-polyfill")
 var linkParser = require('parse-link-header')
+var {clone} = require('./utils')
 
 module.exports = async function(originalOptions, func, filterFunc) {
   function getOptions(page) {
@@ -51,14 +52,4 @@ module.exports = async function(originalOptions, func, filterFunc) {
   }
 
   return allResults
-}
-
-function clone(obj) {
-  var temp = {}
-  for(var key in obj) {
-    if(Object.prototype.hasOwnProperty.call(obj, key)) {
-      temp[key] = obj[key];
-    }
-  }
-  return temp
 }
