@@ -1,5 +1,5 @@
 {
-  "name": "changelog",
+  "name": "pr-changelog",
   "version": "0.0.0",
   "description": "Changelog generator",
   "main": "./lib/main.js",
@@ -9,11 +9,11 @@
     "start": "npm run build && node ./lib/index.js"
   },
   "bin": {
-    "changelog": "./lib/main.js"
+    "pr-changelog": "./lib/main.js"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/benogle/changelog.git"
+    "url": "git+https://github.com/benogle/pr-changelog.git"
   },
   "keywords": [
     "atom",
@@ -23,9 +23,9 @@
   "author": "benogle",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/benogle/changelog/issues"
+    "url": "https://github.com/benogle/pr-changelog/issues"
   },
-  "homepage": "https://github.com/benogle/changelog#readme",
+  "homepage": "https://github.com/benogle/pr-changelog#readme",
   "dependencies": {
     "bluebird": "^3.0.6",
     "expand-home-dir": "0.0.2",
