@@ -1,4 +1,4 @@
-# Changelog
+# pr-changelog
 
 A command line utility to denerate PR changelog between two refs. The changelog looks like:
 
