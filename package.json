@@ -6,7 +6,8 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "build": "babel src --out-dir lib",
-    "link": "npm run build && npm link"
+    "link": "npm run build && npm link",
+    "prepublish": "npm run build"
   },
   "bin": {
     "pr-changelog": "./lib/main.js"
