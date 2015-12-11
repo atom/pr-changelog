@@ -20,7 +20,9 @@ v1.2.4...v1.3.0
 
 This relies on the GitHub API; you should [create an API token](https://help.github.com/articles/creating-an-access-token-for-command-line-use/), and place it in the `GITHUB_ACCESS_TOKEN` environment variable. It needs `public_repo` access if your repo is public, and `repo` access if your repo is private.
 
-This was written for [Atom](http://atom.io), and as such there are a couple atomisms baked in. e.g. By default it will generate an Atom changelog.
+### CLI
+
+This project was written for [Atom](http://atom.io), and as such there are a couple atomisms baked in. e.g. By default it will generate an Atom changelog.
 
 Generate an Atom changelog, including package changelogs:
 
@@ -40,9 +42,46 @@ This will compare the tags via the GitHub API. The downside with this approach i
 pr-changelog -v -r omgme/myrepo -l ~/path/to/myrepo v0.9.0...v1.0.0 > changelog.md
 ```
 
+### In another script
+
+```js
+let Changelog = require('pr-changelog')
+Changelog.getChangelog({
+  owner: 'atom',
+  repo: 'find-and-replace',
+  fromTag: 'v1.0.0',
+  toTag: 'v1.4.0',
+  localClone: '~/github/find-and-replace', // optional
+  changelogFormatter: Changelog.defaultChangelogFormatter // any formatter
+}).then(function(output) {
+  console.log(output);
+}).catch(function(err) {
+  console.error('error', err.stack || err);
+})
+```
+
+There are 3 functions exported:
+
+```js
+{ getChangelog, pullRequestsToString, defaultChangelogFormatter }
+```
+
+You can write your own formatter:
+
+```js
+let Changelog = require('pr-changelog')
+function myChangelogFormatter({pullRequests, owner, repo, fromTag, toTag}) {
+  // pullRequestsToString returns a bulleted markdown list of PRs
+  let changelog = Changelog.pullRequestsToString(pullRequests)
+
+  // This is the default, but do whatever you want!
+  return `## ${owner}/${repo}\n\n${fromTag}...${toTag}\n\n${changelog}`
+}
+```
+
 ## Approach
 
-There are a number of changelog generators out there. The downside of most approaches is that they use dates to bucket the commits or PRs into a tag or ref. Atom uses a [release system](http://blog.atom.io/2015/10/21/introducing-the-atom-beta-channel.html) similar to Chrome with stable, beta, and a development channels, so date bucketing does not work.
+There are a number of changelog generator projects out there. The downside of most approaches is that they use dates to bucket the commits or PRs into a tag or ref. Atom uses a [release system](http://blog.atom.io/2015/10/21/introducing-the-atom-beta-channel.html) similar to Chrome with stable, beta, and a development channels, so date bucketing does not work.
 
 This project diffs the commits between the specified refs, looks for merge commits, and finds the PRs associated with those merge commits.
 
