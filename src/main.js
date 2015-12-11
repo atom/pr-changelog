@@ -1,7 +1,7 @@
 #! /usr/bin/env node
 
 let expandHomeDir = require('expand-home-dir')
-let getChangelog = require('./changelog')
+let Changelog = require('./changelog')
 let Logger = require('./logger')
 let argv = require('yargs')
   .usage('Usage: $0 [options] <baseTag>...<headTag>')
@@ -31,15 +31,16 @@ let [___, owner, repo] = repoRegex.exec(argv.repo)
 let localClone = expandHomeDir(argv.localClone)
 let dependencyKey = argv.packages ? 'packageDependencies' : null
 
-getChangelog({
+Changelog.getChangelog({
   owner: owner,
   repo: repo,
   fromTag: fromTag,
   toTag: toTag,
   localClone: localClone,
-  dependencyKey: dependencyKey
+  dependencyKey: dependencyKey,
+  changelogFormatter: Changelog.defaultChangelogFormatter
 }).then(function(output) {
   console.log(output);
 }).catch(function(err) {
-  console.log('error', err.stack || err);
+  console.error('error', err.stack || err);
 })

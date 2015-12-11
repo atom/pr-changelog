@@ -101,14 +101,6 @@ function formatCommits(commits) {
   return commitsResult
 }
 
-function commitsToString(commits) {
-  let commitStrings = []
-  for (let commit of commits) {
-    commitStrings.push(`${commit.sha} ${commit.author} ${commit.summary}`)
-  }
-  return commitStrings.join('\n')
-}
-
 /*
   Pull Requests
 */
@@ -204,9 +196,19 @@ function pullRequestsToString(pullRequests) {
   return pullRequestStrings.join('\n')
 }
 
-async function getFormattedPullRequests({owner, repo, fromTag, toTag, localClone}) {
+function defaultChangelogFormatter({pullRequests, owner, repo, fromTag, toTag}) {
+  let changelog = pullRequestsToString(pullRequests)
+  return `## ${owner}/${repo}\n\n${fromTag}...${toTag}\n\n${changelog}`
+}
+
+async function getFormattedPullRequests({owner, repo, fromTag, toTag, localClone, changelogFormatter}) {
   Logger.log('\nComparing', `${owner}/${repo}`, `${fromTag}...${toTag}`);
   if (localClone) Logger.log('Local clone of repo', localClone);
+
+  if (!changelogFormatter) {
+    Logger.warn('A `changelogFormatter` must be specified!')
+    return ''
+  }
 
   let commits = await getCommitDiff({
     owner: owner,
@@ -232,8 +234,13 @@ async function getFormattedPullRequests({owner, repo, fromTag, toTag, localClone
   pullRequests = filterPullRequestsByCommits(pullRequests, commits)
 
   if (pullRequests.length) {
-    let changelog = pullRequestsToString(pullRequests)
-    return `## ${owner}/${repo}\n\n${fromTag}...${toTag}\n\n${changelog}`
+    return changelogFormatter({
+      owner: owner,
+      repo: repo,
+      fromTag: fromTag,
+      toTag: toTag,
+      pullRequests: pullRequests
+    })
   }
   else
     return ''
@@ -243,7 +250,7 @@ async function getFormattedPullRequests({owner, repo, fromTag, toTag, localClone
   Generating changelog from child packages
 */
 
-async function getFormattedPullRequestsForDependencies({owner, repo, fromTag, toTag, dependencyKey}) {
+async function getFormattedPullRequestsForDependencies({owner, repo, fromTag, toTag, dependencyKey, changelogFormatter}) {
   let options, fromRefContent, toRefContent, changedDependencies
   let resultList = []
   let contentOptions = {
@@ -303,9 +310,14 @@ async function getFormattedPullRequestsForDependencies({owner, repo, fromTag, to
   changedDependencies = getChangedDependencies(fromRefContent, toRefContent)
   for (let packageName in changedDependencies) {
     let {fromRef, toRef} = changedDependencies[packageName]
-    let formattedPR = await getFormattedPullRequests({owner: owner, repo: packageName, fromTag: fromRef, toTag: toRef})
-    if (formattedPR)
-      resultList.push(formattedPR)
+    let formattedPR = await getFormattedPullRequests({
+      owner: owner,
+      repo: packageName,
+      fromTag: fromRef,
+      toTag: toRef,
+      changelogFormatter: changelogFormatter
+    })
+    if (formattedPR) resultList.push(formattedPR)
   }
 
   return resultList.join('\n\n')
@@ -325,4 +337,8 @@ async function getChangelog(options) {
   return results.join('\n\n')
 }
 
-module.exports = getChangelog
+module.exports = {
+  getChangelog: getChangelog,
+  pullRequestsToString: pullRequestsToString,
+  defaultChangelogFormatter: defaultChangelogFormatter
+}
