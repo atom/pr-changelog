@@ -33,7 +33,7 @@ pr-changelog -v -P -l ~/github/atom v1.2.4...v1.3.0 > changelog.md
 Generate a changelog for your own repo:
 
 ```
-pr-changelog -v --r omgme/myrepo v0.9.0...v1.0.0 > changelog.md
+pr-changelog -v -r omgme/myrepo v0.9.0...v1.0.0 > changelog.md
 ```
 
 This will compare the tags via the GitHub API. The downside with this approach is that it is slower, and only returns 250 commits in the diff. If there are more, you should specify the local repo via the `-l` / `--local-clone` switch (make sure the local repo is up to date!).
