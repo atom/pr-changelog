@@ -191,7 +191,7 @@ function formatPullRequests(pullRequests) {
 function pullRequestsToString(pullRequests) {
   let pullRequestStrings = []
   for (let pullRequest of pullRequests) {
-    pullRequestStrings.push(`* [${pullRequest.repoName}#${pullRequest.number} - ${pullRequest.title}](${pullRequest.htmlURL}) on ${pullRequest.mergedAt.format('MMMM Do YYYY')}`)
+    pullRequestStrings.push(`* [${pullRequest.repoName}#${pullRequest.number} - ${pullRequest.title}](${pullRequest.htmlURL})`)
   }
   return pullRequestStrings.join('\n')
 }
