@@ -291,11 +291,13 @@ async function getFormattedPullRequestsForDependencies({owner, repo, fromTag, to
     return changedDependencies
   }
 
+  // get old package.json
   authenticate()
   options = clone(contentOptions)
   options.ref = fromTag
   fromRefContent = github.repos.getContentAsync(options)
 
+  // get new package.json
   authenticate()
   options = clone(contentOptions)
   options.ref = toTag
