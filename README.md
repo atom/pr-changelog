@@ -75,7 +75,7 @@ function myChangelogFormatter({pullRequests, owner, repo, fromTag, toTag}) {
   let changelog = Changelog.pullRequestsToString(pullRequests)
 
   // This is the default, but do whatever you want!
-  return `## ${owner}/${repo}\n\n${fromTag}...${toTag}\n\n${changelog}`
+  return `### ${owner}/${repo}\n\n${fromTag}...${toTag}\n\n${changelog}`
 }
 ```
 
