@@ -27,7 +27,7 @@ This project was written for [Atom](http://atom.io), and as such there are a cou
 Generate an Atom changelog, including package changelogs:
 
 ```
-pr-changelog -v -P -l ~/github/atom v1.2.4...v1.3.0 > changelog.md
+pr-changelog -v -P -r atom/atom -l ~/github/atom v1.2.4...v1.3.0 > changelog.md
 ```
 
 Generate a changelog for your own repo:
