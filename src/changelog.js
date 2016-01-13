@@ -198,7 +198,10 @@ function pullRequestsToString(pullRequests) {
 
 function defaultChangelogFormatter({pullRequests, owner, repo, fromTag, toTag}) {
   let changelog = pullRequestsToString(pullRequests)
-  return `## ${owner}/${repo}\n\n${fromTag}...${toTag}\n\n${changelog}`
+  let title = repo
+  if (repo == 'atom')
+    title = 'Atom Core'
+  return `### [${title}](https://github.com/${owner}/${repo})\n\n${fromTag}...${toTag}\n\n${changelog}`
 }
 
 async function getFormattedPullRequests({owner, repo, fromTag, toTag, localClone, changelogFormatter}) {
