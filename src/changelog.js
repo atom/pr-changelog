@@ -282,8 +282,8 @@ async function getFormattedPullRequestsForDependencies({owner, repo, fromTag, to
       if (fromDeps[packageName] != toDeps[packageName]) {
         changedDependencies[packageName] = {
           // Tags are prefixed with the `v`, not an ideal solution
-          fromRef: `v${fromDeps[packageName]}`,
-          toRef: `v${toDeps[packageName]}`
+          fromRef: fromDeps[packageName] ? `v${fromDeps[packageName]}` : null,
+          toRef: toDeps[packageName] ? `v${toDeps[packageName]}` : null
         }
       }
     }
@@ -313,14 +313,16 @@ async function getFormattedPullRequestsForDependencies({owner, repo, fromTag, to
   changedDependencies = getChangedDependencies(fromRefContent, toRefContent)
   for (let packageName in changedDependencies) {
     let {fromRef, toRef} = changedDependencies[packageName]
-    let formattedPR = await getFormattedPullRequests({
-      owner: owner,
-      repo: packageName,
-      fromTag: fromRef,
-      toTag: toRef,
-      changelogFormatter: changelogFormatter
-    })
-    if (formattedPR) resultList.push(formattedPR)
+    if (fromRef && toRef) {
+      let formattedPR = await getFormattedPullRequests({
+        owner: owner,
+        repo: packageName,
+        fromTag: fromRef,
+        toTag: toRef,
+        changelogFormatter: changelogFormatter
+      })
+      if (formattedPR) resultList.push(formattedPR)
+    }
   }
 
   return resultList.join('\n\n')
