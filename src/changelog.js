@@ -41,8 +41,11 @@ function getCommitDiffLocal({owner, repo, base, head, localClone}) {
   let commitStrings = spawnSync('git', gitDirParams.concat(['log', '--format="%H %ct %s"', `${base}...${head}`])).stdout.toString().trim().split('\n')
   let commits = commitStrings.map((commitString) => {
     let match = commitString.match(commitRegex)
-    let [__, sha, timestamp, summary] = match
-    return {sha: sha, summary: summary, date: moment.unix(timestamp)}
+    if (match) {
+      let [__, sha, timestamp, summary] = match
+      return {sha: sha, summary: summary, date: moment.unix(timestamp)}
+    }
+    return null
   })
 
   return formatCommits(commits)
@@ -78,6 +81,7 @@ function formatCommits(commits) {
   let commitsResult = []
   let shas = {}
   for (let commit of commits) {
+    if (!commit) continue;
     if (shas[commit.sha]) continue;
     shas[commit.sha] = true
     if (commit.summary)
@@ -220,6 +224,11 @@ async function getFormattedPullRequests({owner, repo, fromTag, toTag, localClone
     head: toTag,
     localClone: localClone
   })
+
+  if (commits.length == 0) {
+    return ''
+  }
+
   let firstCommit = commits[0]
   let lastCommit = commits[commits.length - 1]
   let fromDate = firstCommit.date
