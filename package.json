@@ -1,6 +1,6 @@
 {
   "name": "pr-changelog",
-  "version": "0.2.2",
+  "version": "0.2.3",
   "description": "Changelog generator",
   "main": "./lib/changelog.js",
   "scripts": {
