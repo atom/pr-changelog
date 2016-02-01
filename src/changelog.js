@@ -109,6 +109,15 @@ function formatCommits(commits) {
   Pull Requests
 */
 
+async function getPullRequest({owner, repo, number}) {
+  authenticate()
+  return await github.pullRequests.getAsync({
+    user: owner,
+    repo: repo,
+    number: number
+  })
+}
+
 async function getPullRequestsBetweenDates({owner, repo, fromDate, toDate}) {
   authenticate()
   let options = {
@@ -144,27 +153,19 @@ async function getPullRequestsBetweenDates({owner, repo, fromDate, toDate}) {
   return formatPullRequests(mergedPRs)
 }
 
-function filterPullRequestsByCommits(pullRequests, commits) {
+function filterPullRequestCommits(commits) {
   let prRegex = /Merge pull request #(\d+)/
-  let filteredPullRequests = []
-  let pullRequestsByNumber = {}
-
-  for (let pr of pullRequests) {
-    pullRequestsByNumber[pr.number] = pr
-  }
+  let filteredCommits = []
 
   for (let commit of commits) {
     let match = commit.summary.match(prRegex)
     if (!match) continue;
 
-    let prNumber = match[1]
-    if (pullRequestsByNumber[prNumber])
-      filteredPullRequests.push(pullRequestsByNumber[prNumber])
-    else
-      Logger.log('No PR found for', prNumber, '; Commit text:', commit.summary);
+    commit.prNumber = match[1]
+    filteredCommits.push(commit)
   }
 
-  return formatPullRequests(filteredPullRequests)
+  return filteredCommits
 }
 
 function formatPullRequests(pullRequests) {
@@ -243,7 +244,27 @@ async function getFormattedPullRequests({owner, repo, fromTag, toTag, localClone
   })
   Logger.log("Found", pullRequests.length, "merged PRs");
 
-  pullRequests = filterPullRequestsByCommits(pullRequests, commits)
+  let prCommits = filterPullRequestCommits(commits)
+  let filteredPullRequests = []
+  let pullRequestsByNumber = {}
+
+  for (let pr of pullRequests)
+    pullRequestsByNumber[pr.number] = pr
+
+  for (let commit of prCommits) {
+    if (pullRequestsByNumber[commit.prNumber])
+      filteredPullRequests.push(pullRequestsByNumber[commit.prNumber])
+    else {
+      Logger.log('PR ', commit.prNumber, 'not in date range, fetching explicitly');
+      let pullRequest = await getPullRequest({owner, repo, number: commit.prNumber})
+      if (pullRequest)
+        filteredPullRequests.push(pullRequest)
+      else
+        Logger.warn('PR #', commit.prNumber, 'not found! Commit text:', commit.summary);
+    }
+  }
+
+  pullRequests = formatPullRequests(filteredPullRequests)
 
   if (pullRequests.length) {
     return changelogFormatter({
