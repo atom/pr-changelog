@@ -259,15 +259,19 @@ async function getFormattedPullRequests({owner, repo, fromTag, toTag, localClone
     pullRequestsByNumber[pr.number] = pr
 
   for (let commit of prCommits) {
-    if (pullRequestsByNumber[commit.prNumber])
+    if (pullRequestsByNumber[commit.prNumber]) {
       filteredPullRequests.push(pullRequestsByNumber[commit.prNumber])
-    else {
-      Logger.log('PR ', commit.prNumber, 'not in date range, fetching explicitly');
+    }
+    else if (fromDate.toISOString() == toDate.toISOString()){
+      Logger.log('PR', commit.prNumber, 'not in date range, fetching explicitly');
       let pullRequest = await getPullRequest({owner, repo, number: commit.prNumber})
       if (pullRequest)
         filteredPullRequests.push(pullRequest)
       else
         Logger.warn('PR #', commit.prNumber, 'not found! Commit text:', commit.summary);
+    }
+    else {
+      Logger.log('PR', commit.prNumber, 'not in date range, likely a merge commit from a fork-to-fork PR');
     }
   }
 
