@@ -111,11 +111,17 @@ function formatCommits(commits) {
 
 async function getPullRequest({owner, repo, number}) {
   authenticate()
-  return await github.pullRequests.getAsync({
-    user: owner,
-    repo: repo,
-    number: number
-  })
+  try {
+    return await github.pullRequests.getAsync({
+      user: owner,
+      repo: repo,
+      number: number
+    })
+  }
+  catch (e) {
+    Logger.warn('Cannot find PR', `${owner}/${repo}#${number}`, e.code, e.message)
+    return null
+  }
 }
 
 async function getPullRequestsBetweenDates({owner, repo, fromDate, toDate}) {
