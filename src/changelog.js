@@ -167,6 +167,7 @@ function filterPullRequestCommits(commits) {
     let match = commit.summary.match(prRegex)
     if (!match) continue;
 
+    // TODO: not ideal jamming these properties on the object
     commit.prNumber = match[1]
     filteredCommits.push(commit)
   }
