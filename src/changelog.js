@@ -34,7 +34,7 @@ function getCommitDiffLocal({owner, repo, base, head, localClone}) {
   let gitDirParams = ['--git-dir', `${localClone}/.git`, '--work-tree', localClone]
 
   let remote = spawnSync('git', gitDirParams.concat(['config', '--get', 'remote.origin.url'])).stdout.toString()
-  if (remote.indexOf(`:${owner}/${repo}.git`) < 0)
+  if (remote.indexOf(`:${owner}/${repo}.git`) < 0 || remote.indexOf(`/${owner}/${repo}.git`) < 0)
     return null
 
   let commitRegex = /([\da-f]+) ([\d]+) (.+)/
