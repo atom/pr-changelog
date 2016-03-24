@@ -28,7 +28,7 @@
   "homepage": "https://github.com/benogle/pr-changelog#readme",
   "dependencies": {
     "bluebird": "^3.0.6",
-    "expand-home-dir": "0.0.2",
+    "expand-home-dir": "0.0.3",
     "github": "^0.1.16",
     "moment": "^2.10.6",
     "parse-link-header": "^0.4.1",
