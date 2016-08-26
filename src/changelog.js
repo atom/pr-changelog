@@ -69,10 +69,12 @@ function getCommitDiffLocal({owner, repo, base, head, localClone}) {
   return commits
 }
 
-// This will only return 250 commits when using the API
 async function getCommitDiffRemote({owner, repo, base, head}) {
   authenticate()
 
+  // Fetch comparisons recursively until we don't find any commits
+  // This is because the GitHub API limits the number of commits returned in
+  // a single response.
   let commits = []
   let compareHead = head
   let compareResult
