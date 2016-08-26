@@ -18,10 +18,15 @@ Promise.promisifyAll(github.repos);
 Promise.promisifyAll(github.issues);
 Promise.promisifyAll(github.pullRequests);
 
+let githubAccessToken
+function setGithubAccessToken (token) {
+  githubAccessToken = token
+}
+
 function authenticate() {
   github.authenticate({
     type: "oauth",
-    token: process.env['GITHUB_ACCESS_TOKEN']
+    token: githubAccessToken || process.env['GITHUB_ACCESS_TOKEN']
   });
 }
 
@@ -400,5 +405,6 @@ async function getChangelog(options) {
 module.exports = {
   getChangelog: getChangelog,
   pullRequestsToString: pullRequestsToString,
-  defaultChangelogFormatter: defaultChangelogFormatter
+  defaultChangelogFormatter: defaultChangelogFormatter,
+  setGithubAccessToken: setGithubAccessToken
 }
