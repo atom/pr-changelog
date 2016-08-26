@@ -29,6 +29,24 @@ function authenticate() {
   Commits
 */
 
+async function getCommitDiff({owner, repo, base, head, localClone}) {
+  let commits
+  if (localClone) {
+    commits = getCommitDiffLocal({owner, repo, base, head, localClone})
+    if (commits) {
+      Logger.log('Found', commits.length, 'local commits');
+    } else {
+      Logger.warn(`Cannot fetch local commit diff, cannot find local copy of ${owner}/${repo}`);
+    }
+  }
+
+  if (!commits) {
+    commits = await getCommitDiffRemote({owner, repo, base, head})
+  }
+
+  return formatCommits(commits)
+}
+
 // Get the tag diff locally
 function getCommitDiffLocal({owner, repo, base, head, localClone}) {
   let gitDirParams = ['--git-dir', `${localClone}/.git`, '--work-tree', localClone]
@@ -48,33 +66,29 @@ function getCommitDiffLocal({owner, repo, base, head, localClone}) {
     return null
   })
 
-  return formatCommits(commits)
+  return commits
 }
 
 // This will only return 250 commits when using the API
-async function getCommitDiff({owner, repo, base, head, localClone}) {
-  let commits
-  if (localClone) {
-    commits = getCommitDiffLocal({owner, repo, base, head, localClone})
-    if (commits) {
-      Logger.log('Found', commits.length, 'local commits');
-      return commits
-    }
-    else
-      Logger.warn(`Cannot fetch local commit diff, cannot find local copy of ${owner}/${repo}`);
-  }
-
+async function getCommitDiffRemote({owner, repo, base, head}) {
   authenticate()
-  let options = {
-    user: owner,
-    repo: repo,
-    base: base,
-    head: head
-  }
 
-  let compareView = await github.repos.compareCommitsAsync(options)
-  Logger.log('Found', compareView.commits.length, 'commits from the GitHub API');
-  return formatCommits(compareView.commits)
+  let commits = []
+  let compareHead = head
+  let compareResult
+  do {
+    compareResult = await github.repos.compareCommitsAsync({
+      user: owner,
+      repo: repo,
+      base: base,
+      head: compareHead
+    })
+    commits = compareResult.commits.concat(commits)
+    compareHead = commits[0].sha + '^'
+  } while (compareResult.total_commits > 0)
+
+  Logger.log('Found', commits.length, 'commits from the GitHub API');
+  return commits
 }
 
 function formatCommits(commits) {
