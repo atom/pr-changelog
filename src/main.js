@@ -16,6 +16,9 @@ let argv = require('yargs')
   .boolean('v')
   .alias('v', 'verbose')
   .describe('v', 'Verbose')
+  .alias('H', 'host')
+  .describe('H', 'If using private Enterprise Github, host. Might require a path-prefix')
+  .describe('path-prefix', 'API path prefix used if reaching a private Enterprise Github, default to /api/v3')
   .help('h')
   .alias('h', 'help')
   .demand(1)
@@ -38,7 +41,8 @@ Changelog.getChangelog({
   toTag: toTag,
   localClone: localClone,
   dependencyKey: dependencyKey,
-  changelogFormatter: Changelog.defaultChangelogFormatter
+  changelogFormatter: Changelog.defaultChangelogFormatter,
+  gitOpts: {host: argv.host, pathPrefix: argv['path-prefix']}
 }).then(function(output) {
   console.log(output);
 }).catch(function(err) {
