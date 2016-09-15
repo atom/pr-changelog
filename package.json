@@ -28,6 +28,7 @@
   "homepage": "https://github.com/benogle/pr-changelog#readme",
   "dependencies": {
     "bluebird": "^3.0.6",
+    "babel-polyfill": "^6.1.4",
     "expand-home-dir": "0.0.3",
     "github": "^3.0.0",
     "moment": "^2.10.6",
@@ -38,7 +39,6 @@
     "babel-cli": "^6.14.0",
     "babel-plugin-syntax-async-functions": "^6.1.4",
     "babel-plugin-transform-regenerator": "^6.1.4",
-    "babel-polyfill": "^6.1.4",
     "babel-preset-es2015": "^6.1.4"
   }
 }
