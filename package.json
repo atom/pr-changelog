@@ -29,10 +29,13 @@
   "dependencies": {
     "bluebird": "^3.0.6",
     "expand-home-dir": "0.0.3",
-    "github": "^0.1.16",
+    "github": "^3.0.0",
     "moment": "^2.10.6",
     "parse-link-header": "^0.4.1",
-    "yargs": "^3.31.0",
+    "yargs": "^3.31.0"
+  },
+  "devDependencies": {
+    "babel-cli": "^6.14.0",
     "babel-plugin-syntax-async-functions": "^6.1.4",
     "babel-plugin-transform-regenerator": "^6.1.4",
     "babel-polyfill": "^6.1.4",
