@@ -18,16 +18,39 @@ Promise.promisifyAll(github.repos);
 Promise.promisifyAll(github.issues);
 Promise.promisifyAll(github.pullRequests);
 
+let githubAccessToken
+function setGithubAccessToken (token) {
+  githubAccessToken = token
+}
+
 function authenticate() {
   github.authenticate({
     type: "oauth",
-    token: process.env['GITHUB_ACCESS_TOKEN']
+    token: githubAccessToken || process.env['GITHUB_ACCESS_TOKEN']
   });
 }
 
 /*
   Commits
 */
+
+async function getCommitDiff({owner, repo, base, head, localClone}) {
+  let commits
+  if (localClone) {
+    commits = getCommitDiffLocal({owner, repo, base, head, localClone})
+    if (commits) {
+      Logger.log('Found', commits.length, 'local commits');
+    } else {
+      Logger.warn(`Cannot fetch local commit diff, cannot find local copy of ${owner}/${repo}`);
+    }
+  }
+
+  if (!commits) {
+    commits = await getCommitDiffRemote({owner, repo, base, head})
+  }
+
+  return formatCommits(commits)
+}
 
 // Get the tag diff locally
 function getCommitDiffLocal({owner, repo, base, head, localClone}) {
@@ -48,33 +71,31 @@ function getCommitDiffLocal({owner, repo, base, head, localClone}) {
     return null
   })
 
-  return formatCommits(commits)
+  return commits
 }
 
-// This will only return 250 commits when using the API
-async function getCommitDiff({owner, repo, base, head, localClone}) {
-  let commits
-  if (localClone) {
-    commits = getCommitDiffLocal({owner, repo, base, head, localClone})
-    if (commits) {
-      Logger.log('Found', commits.length, 'local commits');
-      return commits
-    }
-    else
-      Logger.warn(`Cannot fetch local commit diff, cannot find local copy of ${owner}/${repo}`);
-  }
-
+async function getCommitDiffRemote({owner, repo, base, head}) {
   authenticate()
-  let options = {
-    user: owner,
-    repo: repo,
-    base: base,
-    head: head
+
+  // Fetch comparisons recursively until we don't find any commits
+  // This is because the GitHub API limits the number of commits returned in
+  // a single response.
+  let commits = []
+  let compareHead = head
+  while (true) {
+    const compareResult = await github.repos.compareCommitsAsync({
+      user: owner,
+      repo: repo,
+      base: base,
+      head: compareHead
+    })
+    if (compareResult.total_commits === 0) break
+    commits = compareResult.commits.concat(commits)
+    compareHead = commits[0].sha + '^'
   }
 
-  let compareView = await github.repos.compareCommitsAsync(options)
-  Logger.log('Found', compareView.commits.length, 'commits from the GitHub API');
-  return formatCommits(compareView.commits)
+  Logger.log(`Found ${commits.length} commits from the GitHub API for ${owner}/${repo}`);
+  return commits
 }
 
 function formatCommits(commits) {
@@ -217,7 +238,7 @@ function defaultChangelogFormatter({pullRequests, owner, repo, fromTag, toTag}) 
 }
 
 async function getFormattedPullRequests({owner, repo, fromTag, toTag, localClone, changelogFormatter}) {
-  Logger.log('\nComparing', `${owner}/${repo}`, `${fromTag}...${toTag}`);
+  Logger.log('Comparing', `${owner}/${repo}`, `${fromTag}...${toTag}`);
   if (localClone) Logger.log('Local clone of repo', localClone);
 
   if (!changelogFormatter) {
@@ -242,14 +263,14 @@ async function getFormattedPullRequests({owner, repo, fromTag, toTag, localClone
   let fromDate = firstCommit.date
   let toDate = lastCommit.date
 
-  Logger.log("Fetching PRs between dates", fromDate.toISOString(), toDate.toISOString());
+  Logger.log(`Fetching PRs between dates ${fromDate.toISOString()} ${toDate.toISOString()} for ${owner}/${repo}`);
   let pullRequests = await getPullRequestsBetweenDates({
     owner: owner,
     repo: repo,
     fromDate: fromDate,
     toDate: toDate
   })
-  Logger.log("Found", pullRequests.length, "merged PRs");
+  Logger.log(`Found ${pullRequests.length} merged PRs for ${owner}/${repo}`);
 
   let prCommits = filterPullRequestCommits(commits)
   let filteredPullRequests = []
@@ -263,15 +284,15 @@ async function getFormattedPullRequests({owner, repo, fromTag, toTag, localClone
       filteredPullRequests.push(pullRequestsByNumber[commit.prNumber])
     }
     else if (fromDate.toISOString() == toDate.toISOString()){
-      Logger.log('PR', commit.prNumber, 'not in date range, fetching explicitly');
+      Logger.log(`${owner}/${repo}#${commit.prNumber} not in date range, fetching explicitly`)
       let pullRequest = await getPullRequest({owner, repo, number: commit.prNumber})
       if (pullRequest)
         filteredPullRequests.push(pullRequest)
       else
-        Logger.warn('PR #', commit.prNumber, 'not found! Commit text:', commit.summary);
+        Logger.warn(`${owner}/${repo}#${commit.prNumber} not found! Commit text: ${commit.summary}`)
     }
     else {
-      Logger.log('PR', commit.prNumber, 'not in date range, likely a merge commit from a fork-to-fork PR');
+      Logger.log(`${owner}/${repo}#${commit.prNumber} not in date range, likely a merge commit from a fork-to-fork PR`)
     }
   }
 
@@ -353,40 +374,37 @@ async function getFormattedPullRequestsForDependencies({owner, repo, fromTag, to
     return ''
   }
 
+  let resultPromises = []
   changedDependencies = getChangedDependencies(fromRefContent, toRefContent)
   for (let packageName in changedDependencies) {
     let {fromRef, toRef} = changedDependencies[packageName]
     if (fromRef && toRef) {
-      let formattedPR = await getFormattedPullRequests({
+      resultPromises.push(getFormattedPullRequests({
         owner: owner,
         repo: packageName,
         fromTag: fromRef,
         toTag: toRef,
         changelogFormatter: changelogFormatter
-      })
-      if (formattedPR) resultList.push(formattedPR)
+      }))
     }
   }
 
-  return resultList.join('\n\n')
+  const results = await Promise.all(resultPromises)
+  return results.join('\n\n')
 }
 
 async function getChangelog(options) {
-  let mainPackageChangelog, childrenChangelog, results
-
-  // These could be done in parallel, but serially threads the log messages nicely
-  mainPackageChangelog = await getFormattedPullRequests(options)
+  const promises = [getFormattedPullRequests(options)]
   if (options.dependencyKey)
-    childrenChangelog = await getFormattedPullRequestsForDependencies(options)
+    promises.push(getFormattedPullRequestsForDependencies(options))
 
-  results = [mainPackageChangelog]
-  if (childrenChangelog) results.push(childrenChangelog)
-
+  const results = await Promise.all(promises)
   return results.join('\n\n')
 }
 
 module.exports = {
   getChangelog: getChangelog,
   pullRequestsToString: pullRequestsToString,
-  defaultChangelogFormatter: defaultChangelogFormatter
+  defaultChangelogFormatter: defaultChangelogFormatter,
+  setGithubAccessToken: setGithubAccessToken
 }
