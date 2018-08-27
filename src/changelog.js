@@ -246,6 +246,31 @@ async function getFormattedPullRequests({owner, repo, fromTag, toTag, localClone
     return ''
   }
 
+  if (repo !== 'atom' && fromTag.startsWith('vfile:.')) {
+    // This case will occur when an Atom package has been consolidated into atom/atom
+    // for more than one release.  pr-changelog doesn't apply here because all PRs
+    // for this package will show up against Atom Core
+    Logger.warn(`Package '${repo}' uses local package path, skipping...`)
+    return ''
+  }
+
+  if (repo !== 'atom' && toTag.startsWith('vfile:.')) {
+    // This case will occur when an Atom package has been consolidated into atom/atom
+    // between the prior and current releases.  Since we can't easily compute changes
+    // to the standalone package compared to what's currently in the atom/atom repo,
+    // let's choose the last published version for the package to get as much info
+    // as we can.
+    Logger.log(`Package '${repo}' uses local package path, comparing against last published tag...`)
+    let releaseTags = await github.repos.getTagsAsync({user: owner, repo})
+    if (releaseTags && releaseTags.length > 0 && releaseTags[0].name !== fromTag) {
+      toTag = releaseTags[0].name
+      Logger.log(`Package '${repo}'s last release was ${toTag}, comparing against that`)
+    } else {
+      Logger.log(`Package '${repo}' has not changed since the last Atom release, skipping it...`)
+      return ''
+    }
+  }
+
   let commits = await getCommitDiff({
     owner: owner,
     repo: repo,
