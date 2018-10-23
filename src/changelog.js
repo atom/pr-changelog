@@ -414,7 +414,7 @@ async function getFormattedPullRequestsForDependencies({owner, repo, fromTag, to
     }
   }
 
-  return results.join('\n')
+  return results.join('\n\n')
 }
 
 async function getChangelog(options) {
