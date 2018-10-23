@@ -399,12 +399,12 @@ async function getFormattedPullRequestsForDependencies({owner, repo, fromTag, to
     return ''
   }
 
-  let resultPromises = []
+  const results = []
   changedDependencies = getChangedDependencies(fromRefContent, toRefContent)
   for (let packageName in changedDependencies) {
     let {fromRef, toRef} = changedDependencies[packageName]
     if (fromRef && toRef) {
-      resultPromises.push(getFormattedPullRequests({
+      results.push(await getFormattedPullRequests({
         owner: owner,
         repo: packageName,
         fromTag: fromRef,
@@ -414,7 +414,6 @@ async function getFormattedPullRequestsForDependencies({owner, repo, fromTag, to
     }
   }
 
-  const results = await Promise.all(resultPromises)
   return results.join('\n\n')
 }
 
