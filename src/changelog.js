@@ -25,7 +25,7 @@ function setGithubAccessToken (token) {
 
 function authenticate() {
   github.authenticate({
-    type: "token",
+    type: "oauth",
     token: githubAccessToken || process.env['GITHUB_ACCESS_TOKEN']
   });
 }
