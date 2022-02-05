@@ -1,32 +1,20 @@
-require("babel-polyfill")
-
-let Promise = require("bluebird")
-let GithubApi = require('github')
+let {Octokit} = require('@octokit/rest')
 let moment = require('moment')
 let paginator = require('./paginator')
 let spawnSync = require('child_process').spawnSync;
 let {filter, clone} = require('./utils')
 let Logger = require('./logger')
 
-let github = new GithubApi({
-  version: '3.0.0',
-  timeout: 10000,
-  protocol: 'https'
-});
-
-Promise.promisifyAll(github.repos);
-Promise.promisifyAll(github.issues);
-Promise.promisifyAll(github.pullRequests);
+let github
 
 let githubAccessToken
-function setGithubAccessToken (token) {
+function setGithubAccessToken(token) {
   githubAccessToken = token
 }
 
-function authenticate() {
-  github.authenticate({
-    type: "oauth",
-    token: githubAccessToken || process.env['GITHUB_ACCESS_TOKEN']
+async function authenticate() {
+  github = new Octokit({
+    auth: githubAccessToken || process.env['GITHUB_ACCESS_TOKEN']
   });
 }
 
@@ -83,14 +71,14 @@ async function getCommitDiffRemote({owner, repo, base, head}) {
   let commits = []
   let compareHead = head
   while (true) {
-    const compareResult = await github.repos.compareCommitsAsync({
-      user: owner,
+    const compareResult = await github.rest.repos.compareCommits({
+      owner: owner,
       repo: repo,
       base: base,
       head: compareHead
     })
-    if (compareResult.total_commits === 0) break
-    commits = compareResult.commits.concat(commits)
+    if (compareResult.data.total_commits === 0) break
+    commits = compareResult.data.commits.concat(commits)
     compareHead = commits[0].sha + '^'
   }
 
@@ -133,14 +121,14 @@ function formatCommits(commits) {
 async function getPullRequest({owner, repo, number}) {
   authenticate()
   try {
-    return await github.pullRequests.getAsync({
-      user: owner,
+    return await github.rest.pulls.get({
+      owner: owner,
       repo: repo,
-      number: number
+      pull_number: number
     })
   }
   catch (e) {
-    Logger.warn('Cannot find PR', `${owner}/${repo}#${number}`, e.code, e.message)
+    Logger.warn('Cannot find PR', `${owner}/${repo}#${number}`, e.status, e.message)
     return null
   }
 }
@@ -148,7 +136,7 @@ async function getPullRequest({owner, repo, number}) {
 async function getPullRequestsBetweenDates({owner, repo, fromDate, toDate}) {
   authenticate()
   let options = {
-    user: owner,
+    owner: owner,
     repo: repo,
     state: 'closed',
     sort: 'updated',
@@ -156,9 +144,9 @@ async function getPullRequestsBetweenDates({owner, repo, fromDate, toDate}) {
   }
 
   let mergedPRs = await paginator(options, (options) => {
-    return github.pullRequests.getAllAsync(options)
+    return github.rest.pulls.list(options)
   }, (prs) => {
-    prs = filter(prs, (pr) => {
+    prs = filter(prs.data, (pr) => {
       return !!pr.merged_at
     })
     if (prs.length == 0) return prs
@@ -261,7 +249,7 @@ async function getFormattedPullRequests({owner, repo, fromTag, toTag, localClone
     // let's choose the last published version for the package to get as much info
     // as we can.
     Logger.log(`Package '${repo}' uses local package path, comparing against last published tag...`)
-    let releaseTags = await github.repos.getTagsAsync({user: owner, repo})
+    let releaseTags = await github.rest.repos.listTags({owner, repo})
     if (releaseTags && releaseTags.length > 0 && releaseTags[0].name !== fromTag) {
       toTag = releaseTags[0].name
       Logger.log(`Package '${repo}'s last release was ${toTag}, comparing against that`)
@@ -272,11 +260,11 @@ async function getFormattedPullRequests({owner, repo, fromTag, toTag, localClone
   }
 
   let commits = await getCommitDiff({
-    owner: owner,
-    repo: repo,
+    owner,
+    repo,
     base: fromTag,
     head: toTag,
-    localClone: localClone
+    localClone
   })
 
   if (commits.length == 0) {
@@ -290,8 +278,8 @@ async function getFormattedPullRequests({owner, repo, fromTag, toTag, localClone
 
   Logger.log(`Fetching PRs between dates ${fromDate.toISOString()} ${toDate.toISOString()} for ${owner}/${repo}`);
   let pullRequests = await getPullRequestsBetweenDates({
-    owner: owner,
-    repo: repo,
+    owner,
+    repo,
     fromDate: fromDate,
     toDate: toDate
   })
@@ -325,11 +313,11 @@ async function getFormattedPullRequests({owner, repo, fromTag, toTag, localClone
 
   if (pullRequests.length) {
     return changelogFormatter({
-      owner: owner,
-      repo: repo,
-      fromTag: fromTag,
-      toTag: toTag,
-      pullRequests: pullRequests
+      owner,
+      repo,
+      fromTag,
+      toTag,
+      pullRequests
     })
   }
   else
@@ -344,7 +332,7 @@ async function getFormattedPullRequestsForDependencies({owner, repo, fromTag, to
   let options, fromRefContent, toRefContent, changedDependencies
   let resultList = []
   let contentOptions = {
-    user: owner,
+    owner,
     repo: repo,
     path: 'package.json'
   }
@@ -352,7 +340,7 @@ async function getFormattedPullRequestsForDependencies({owner, repo, fromTag, to
   Logger.log(`\nGenerating dependency changelog for '${dependencyKey}' on ${owner}/${repo}`)
 
   function getContent(results) {
-    return new Buffer(results.content, results.encoding).toString('utf-8')
+    return new Buffer(results.data.content, results.data.encoding).toString('utf-8')
   }
 
   function getDependencies(packageJSON) {
@@ -382,13 +370,13 @@ async function getFormattedPullRequestsForDependencies({owner, repo, fromTag, to
   authenticate()
   options = clone(contentOptions)
   options.ref = fromTag
-  fromRefContent = github.repos.getContentAsync(options)
+  fromRefContent = github.rest.repos.getContent(options)
 
   // get new package.json
   authenticate()
   options = clone(contentOptions)
   options.ref = toTag
-  toRefContent = github.repos.getContentAsync(options)
+  toRefContent = github.rest.repos.getContent(options)
 
   try {
     fromRefContent = getContent(await fromRefContent)
