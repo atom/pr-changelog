@@ -15,7 +15,7 @@ module.exports = async function(originalOptions, func, filterFunc) {
   let shouldUpdateTotalPagesOnNextPage = true
 
   function updateTotalPages(results) {
-    let linkHeader = linkParser(results.meta.link)
+    let linkHeader = linkParser(results.headers.link)
     if (linkHeader && linkHeader.last) {
       shouldUpdateTotalPagesOnNextPage = false
       totalPages = parseInt(linkHeader.last.page)
