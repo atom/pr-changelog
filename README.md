@@ -1,4 +1,5 @@
-# pr-changelog
+##### Atom and all repositories under Atom will be archived on December 15, 2022. Learn more in our [official announcement](https://github.blog/2022-06-08-sunsetting-atom/)
+ # pr-changelog
 
 A command line utility to generate a PR changelog between two refs. The resulting changelog looks like:
 
